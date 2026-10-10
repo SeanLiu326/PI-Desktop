@@ -38,13 +38,11 @@ jobs:
         working-directory: scripts/measurement
         run: |
           npm init -y >/dev/null
-          npm install transcribe-cpp@0.2.2 @transcribe-cpp/linux-x64-cpu-vulkan --no-audit --no-fund
-      - name: Download whisper-small q8_0 (445 MB) from the app catalog
+          npm install transcribe-cpp@0.2.2 @transcribe-cpp/linux-x64-cpu-vulkan @huggingface/hub --no-audit --no-fund
+      - name: Download whisper-small q8_0 (445 MB) the way the app does
         working-directory: scripts/measurement
         run: |
-          curl -L --retry 3 --retry-delay 5 \
-            "https://huggingface.co/handy-computer/whisper-small-GGUF/resolve/main/ggml-small-q8_0.bin" \
-            -o ggml-small-q8_0.bin
+          node download-model.mjs
           ls -lh ggml-small-q8_0.bin
       - name: Measure model load / unload RSS
         working-directory: scripts/measurement
