@@ -19,7 +19,7 @@ execFileSync("curl", ["-L", "--retry", "3", "--retry-delay", "5", URL_, "-o", FI
 });
 const size = statSync(FILE).size;
 console.log(`downloaded: ${size} bytes`);
-if (size < 400 * 1024 * 1024) {
-  throw new Error(`download too small to be the model: ${size} bytes`);
+if (size < 200 * 1024 * 1024) {
+  throw new Error(`download too small to be the small q8_0 model: ${size} bytes`);
 }
 console.log("model download OK");
