@@ -39,7 +39,7 @@ jobs:
         run: |
           npm init -y >/dev/null
           npm install transcribe-cpp@0.2.2 @transcribe-cpp/linux-x64-cpu-vulkan @huggingface/hub --no-audit --no-fund
-      - name: Download whisper-small q8_0 (445 MB) the way the app does
+      - name: Download whisper-small q8_0 (445 MB) from upstream whisper.cpp repo
         working-directory: scripts/measurement
         run: |
           node download-model.mjs
