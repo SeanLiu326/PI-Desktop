@@ -1,0 +1,53 @@
+name: Linux RSS measurement (PR #1505 / #1506 evidence)
+
+# Runs on the contributor fork only, to produce the Linux before/after RSS
+# measurements requested in review of PR #1505 and PR #1506. Not intended for
+# upstream CI.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["measurement/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  v8-gc-rss:
+    name: sidecar heap - idle wait vs explicit gc (PR #1506)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Measure idle-wait vs explicit gc RSS
+        run: node --expose-gc --max-old-space-size=2048 scripts/measurement/measure-v8-gc-rss.mjs
+
+  voice-model-unload-rss:
+    name: stt model load/unload delta (PR #1505)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install the same binding the app uses
+        working-directory: scripts/measurement
+        run: |
+          npm init -y >/dev/null
+          npm install transcribe-cpp@0.2.2 @transcribe-cpp/linux-x64-cpu-vulkan --no-audit --no-fund
+      - name: Download whisper-small q8_0 (445 MB) from the app catalog
+        working-directory: scripts/measurement
+        run: |
+          curl -L --retry 3 --retry-delay 5 \
+            "https://huggingface.co/handy-computer/whisper-small-GGUF/resolve/main/ggml-small-q8_0.bin" \
+            -o ggml-small-q8_0.bin
+          ls -lh ggml-small-q8_0.bin
+      - name: Measure model load / unload RSS
+        working-directory: scripts/measurement
+        env:
+          MODEL_PATH: ${{ github.workspace }}/scripts/measurement/ggml-small-q8_0.bin
+        run: node measure-voice-model-unload-rss.mjs
