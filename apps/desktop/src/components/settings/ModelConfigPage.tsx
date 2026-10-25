@@ -17,6 +17,7 @@ import {
 } from "@pi-desktop/shared";
 import { useAppStore } from "../../stores/app-store";
 import { api } from "../../lib/api";
+import { useRowBusy } from "../../hooks/use-row-busy";
 import { Button } from "../ui";
 import {
   IconConfig,
@@ -103,7 +104,10 @@ export function ModelConfigPage() {
   const [jevSetup, setJevSetup] = useState(false);
   // Bumped when that dialog stored a key, so the card re-reads what exists.
   const [jevStatusRevision, setJevStatusRevision] = useState(0);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  // One busy key per provider row: a settle elsewhere on the page must not
+  // re-arm a row whose own request is still in flight, and a busy row does
+  // not lock the others (the same contract the capability pages pin).
+  const rowBusy = useRowBusy();
   const [testingId, setTestingId] = useState<string | null>(null);
   const [changingImageModel, setChangingImageModel] = useState(false);
   const [refreshingCatalog, setRefreshingCatalog] = useState(false);
@@ -290,7 +294,7 @@ export function ModelConfigPage() {
   };
 
   const toggleEnabled = async (provider: ProviderPublic) => {
-    setBusyId(provider.id);
+    if (!rowBusy.begin(provider.id)) return;
     try {
       await api.updateProvider({ id: provider.id, enabled: !provider.enabled });
       await refreshProviders();
@@ -303,12 +307,12 @@ export function ModelConfigPage() {
         variant: "error",
       });
     } finally {
-      setBusyId(null);
+      rowBusy.end(provider.id);
     }
   };
 
   const removeProvider = async (provider: ProviderPublic) => {
-    setBusyId(provider.id);
+    if (!rowBusy.begin(provider.id)) return;
     try {
       await api.deleteProvider(provider.id);
       await refreshProviders();
@@ -318,13 +322,13 @@ export function ModelConfigPage() {
         variant: "error",
       });
     } finally {
-      setBusyId(null);
+      rowBusy.end(provider.id);
     }
   };
 
   /** Resolves true once the key is stored, so the row can close its entry. */
   const saveProviderKey = async (provider: ProviderPublic, value: string) => {
-    setBusyId(provider.id);
+    if (!rowBusy.begin(provider.id)) return false;
     try {
       await api.setProviderSecret({ id: provider.id, secretValue: value });
       await refreshProviders();
@@ -339,7 +343,7 @@ export function ModelConfigPage() {
       });
       return false;
     } finally {
-      setBusyId(null);
+      rowBusy.end(provider.id);
     }
   };
 
@@ -348,6 +352,7 @@ export function ModelConfigPage() {
   };
 
   const testProvider = async (provider: ProviderPublic) => {
+    if (!rowBusy.begin(provider.id)) return;
     setTestingId(provider.id);
     try {
       const result = (await api.testProvider(provider.id)) as {
@@ -371,6 +376,7 @@ export function ModelConfigPage() {
         variant: "error",
       });
     } finally {
+      rowBusy.end(provider.id);
       setTestingId(null);
     }
   };
@@ -465,15 +471,13 @@ export function ModelConfigPage() {
               providers={providers}
               accountFor={accountFor}
               busy={
-                busyId !== null ||
-                testingId !== null ||
                 setupFor !== null ||
                 editingAccountId !== null ||
                 busyAccountId !== null ||
                 savingAccount ||
                 login !== null
               }
-              isRowBusy={(id) => busyId === id || testingId === id || busyAccountId === id}
+              isRowBusy={(id) => rowBusy.isBusy(id) || busyAccountId === id}
               testingId={testingId}
               onEdit={(provider) =>
                 serviceRowKind(provider) === "account"
