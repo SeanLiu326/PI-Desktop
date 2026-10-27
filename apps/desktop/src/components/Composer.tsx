@@ -81,6 +81,7 @@ export function Composer({
   const moveQueuedPrompt = useAppStore((s) => s.moveQueuedPrompt);
   const editQueuedPrompt = useAppStore((s) => s.editQueuedPrompt);
   const sendQueuedNow = useAppStore((s) => s.sendQueuedNow);
+  const promoteFirstQueuedPrompt = useAppStore((s) => s.promoteFirstQueuedPrompt);
   const abort = useAppStore((s) => s.abort);
   const isRunning = useAppStore((s) => s.isRunning);
   const planningState = useAppStore((s) =>
@@ -449,6 +450,7 @@ export function Composer({
     sendPrompt,
     steerPrompt,
     showToast,
+    promoteQueuedPrompt: promoteFirstQueuedPrompt,
     recordHistory: inputHistory.record,
     draft: {
       ref,

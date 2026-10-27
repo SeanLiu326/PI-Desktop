@@ -31,6 +31,12 @@ type UseComposerSubmitOptions = {
   sendPrompt: AppState["sendPrompt"];
   steerPrompt: AppState["steerPrompt"];
   showToast: AppState["showToast"];
+  /**
+   * Keyboard path to a queue row's "send now": with an empty draft the
+   * steering shortcut promotes the first promotable follow-up instead
+   * (#1920). Omitted by tests that drive submit without a queue.
+   */
+  promoteQueuedPrompt?: () => Promise<boolean>;
   /** Record an accepted submission for ArrowUp recall. */
   recordHistory?: (snapshot: ComposerDraftSnapshot, sessionId: string) => void;
   draft: Pick<
@@ -66,6 +72,7 @@ export function useComposerSubmit({
   sendPrompt,
   steerPrompt,
   showToast,
+  promoteQueuedPrompt,
   recordHistory,
   draft,
 }: UseComposerSubmitOptions): ComposerSubmitController {
@@ -76,7 +83,14 @@ export function useComposerSubmit({
     // arrives where the user put it instead of trailing the text.
     const inlineContent = serializeInlineComposerFileReferences(rawText, activeFileReferences);
     const serializedContent = serializeComposerFileReferences(rawText, activeFileReferences);
-    if (!serializedContent) return;
+    if (!serializedContent) {
+      // An empty draft has nothing to steer with, but the steering shortcut is
+      // also the keyboard path to the queue row's "send now": promote the
+      // first promotable follow-up into the current turn (#1920). A blocked
+      // send (approval pending, paste in flight) promotes nothing.
+      if (steering && !sendBlocked) await promoteQueuedPrompt?.();
+      return;
+    }
     if (sendBlocked || (steering && !steeringAllowed)) {
       if (pasting) showToast(t("chat.pasteInProgress"), { variant: "info" });
       return;

@@ -253,6 +253,8 @@ export type AppState = {
   /** Return one waiting row to the composer as an editable draft. */
   editQueuedPrompt: (promptId: string) => void;
   sendQueuedNow: (promptId: string) => Promise<void>;
+  /** Promote the first promotable waiting row of the active session (#1920). */
+  promoteFirstQueuedPrompt: () => Promise<boolean>;
   refreshQueuedPrompts: (sessionId: string) => Promise<void>;
   applyQueueChanged: (event: AgentQueueChangedEvent) => void;
   compactContext: () => Promise<void>;

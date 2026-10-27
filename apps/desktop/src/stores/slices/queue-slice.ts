@@ -70,6 +70,7 @@ export function createQueueSlice({
   | "moveQueuedPrompt"
   | "editQueuedPrompt"
   | "sendQueuedNow"
+  | "promoteFirstQueuedPrompt"
   | "refreshQueuedPrompts"
   | "applyQueueChanged"
   | "sendPrompt"
@@ -314,6 +315,19 @@ export function createQueueSlice({
       } catch {
         // The next queue event resynchronizes the mirror.
       }
+    },
+
+    promoteFirstQueuedPrompt: async () => {
+      const sessionId = get().activeSessionId;
+      if (!sessionId) return false;
+      // The first promotable row in delivery order: pending rows are still
+      // waiting for Host admission and promoted rows are already in flight.
+      const first = (get().queuedPrompts[sessionId] ?? []).find(
+        (item) => !isPendingQueuedPrompt(item) && !isPromotedQueuedPrompt(item),
+      );
+      if (!first) return false;
+      await get().sendQueuedNow(first.id);
+      return true;
     },
 
     applyQueueChanged: (event: AgentQueueChangedEvent) => {
