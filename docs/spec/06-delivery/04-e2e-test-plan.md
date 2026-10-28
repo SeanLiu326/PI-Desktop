@@ -2499,6 +2499,11 @@ identify the platform validation still needed.
   edit/remove the pending row, release admission, then edit/remove the durable
   row. Repeat with a captured file-reference draft. 12) Withhold a local Host
   queue-save request until its existing RPC deadline expires, then retry.
+  13) With an empty composer and two waiting rows, press the steering shortcut
+  (`⌥/Alt+Enter`): verify the first row is promoted, press it again to promote
+  the second, then repeat with only a saving row present. 14) Repeat with a
+  draft in the composer and confirm the shortcut steers the draft and leaves
+  both rows waiting.
 - **Expected**: The single submit slot contains exactly one button in every
   state: disabled Send while idle and empty, enabled Send while running with
   content (which queues the prompt), and Stop while running with an empty
@@ -2524,7 +2529,10 @@ identify the platform validation still needed.
   on Send now, and remain visible without restoring a second draft. Once acknowledged, remove deletes the durable row and edit restores
   exactly its captured draft; neither row reappears after refresh. A local Host
   admission timeout clears the pending row, reports the error, and restores
-  the rejected composer draft; retry can queue normally.
+  the rejected composer draft; retry can queue normally. With an empty composer
+  the steering shortcut promotes the first waiting row exactly as its Send now
+  action does, skipping rows that are saving or already promoted; with a draft
+  present it steers the draft and leaves the queue untouched.
 - **Specs linked**: `03-runtime/01-ipc-protocol.md` (§5.6),
   `04-ux/08-component-spec.md` (§11),
   `04-ux/09-interaction-patterns.md` (§3.4), ADR 0118, ADR 0213, ADR 0265
@@ -2533,7 +2541,8 @@ identify the platform validation still needed.
 - **Status**: Source-level regression and deterministic desktop finalization /
   Agent Host integration covered (`queued-turn-finalization.test.mjs`);
   promotion, reorder, and edit contracts covered at source level
-  (`composer-send-state.test.mjs`); full UI scenario Draft
+  (`composer-send-state.test.mjs`); the empty-composer send-now shortcut is
+  covered by `composer-queued-send-now-shortcut.test.mjs`; full UI scenario Draft
 
 #### E2E-QUEUE-promote-orders-delivery-by-click: Two Send now clicks deliver in click order
 
@@ -4789,20 +4798,17 @@ window; opening a normal panel afterward must still work.
   and press Escape to leave the tabs unchanged. With only one or two tabs, drag
   unused header space to move the native window; tab and action clicks must
   still work without moving it.
-  work without moving it. 4) Click `+` twice and verify each click
-  creates and activates a separate New launcher tab. Confirm the launcher body
-  contains Review plus each in-scope plugin view exactly once as clickable rows;
-  there is no work-panel dropdown or popup. Click Browser from one New tab and
-  confirm that tab opens the native plugin surface without changing its bounds.
-  5) Close
-  active middle and edge tabs and verify neighbor selection. Close the final
-  tab and confirm the panel remains open on the New launcher. 6) Use the
-  viewport-fixed work-panel toggle and trigger another artifact. 7) In session A,
-  leave the panel open with multiple
-  tabs and a Browser resource; switch to session B, create a different tab set,
-  then switch repeatedly between A and B and select a project without an active
-  conversation. Generate a background artifact in the non-visible session.
-  7) Drag the inner left-edge handle left and right across its bounds; verify
+  4) Click `+` twice and verify each creates and activates a separate New
+  launcher tab. Confirm its body lists Review and each in-scope plugin view
+  exactly once. Open Browser and confirm its native surface opens at unchanged
+  bounds. Open its context menu and verify the native popup appears above Browser
+  chrome while the page remains visible. Escape closes it without hiding the page
+  or changing bounds. 5) Close active middle/edge tabs, verify neighbor selection,
+  then close the final tab and confirm New remains. 6) Collapse/reopen the panel
+  and trigger an artifact. In session A, leave Browser open; switch to B and
+  create another tab set, then switch repeatedly between sessions and select a
+  project without an active conversation. Generate a background artifact. 7)
+  Drag the inner divider
   pointer-down does not jump the divider or resize the native window, cancel one
   gesture with Escape, then focus the handle and exercise Arrow/Shift+Arrow/Home/End.
   Commit a different panel width with Browser active, double-click the divider and
@@ -4833,24 +4839,22 @@ window; opening a normal panel afterward must still work.
   opacity/slide, so MainChat reflows continuously without a pre-animation jump.
   Opening the panel, collapsing it, or committing a divider resize updates the
   presentation without a native-window jump. The header is a horizontally
-  Opening the panel, collapsing it, or committing a divider resize updates the
-  presentation without a native-window jump. The header is a horizontally
   scrollable tablist with stable `92px–180px` tabs, visible spacing, and a
   fixed `+`; labels stay readable instead of shrinking into one cluster, the
   strip alone scrolls, active tabs scroll into view, and close selects the
   right neighbor then left. A localized, keyboard-navigable tab context menu
   offers Close Tab, Close Other Tabs, and Close All Tabs. Close Other Tabs
   retains and activates its target and is disabled for one tab; Close All Tabs
-  closes Browser resources and leaves the panel open on New. New launcher tabs
-  expose Review and in-scope plugin views as body buttons, with no popup to
-  overlap or shift the panel. Dragging a tab shows a before/after insertion
-  indicator, edge-holding scrolls the strip toward hidden tabs, and reorders
-  only the tab array; the active resource stays active. `Alt+ArrowLeft`/
-  `Alt+ArrowRight` provides the same reorder path from the focused tab. Clicking
-  a launcher row replaces that New tab with the destination or activates its
-  existing singleton.
-  retains runtime tabs but hides the panel until another artifact reopens it.
-  Width follows the shared three-column budget with no fixed pixel cap and
+  closes Browser resources and leaves the panel open on New. For an active
+  Browser/plugin view, the tab context menu is a Main-owned native popup above
+  Browser chrome; the page stays visible and its bounds do not change.
+  New launcher tabs expose Review and plugin views as body buttons, with no
+  overlapping popup. Dragging a tab shows a before/after insertion indicator;
+  edge-holding scrolls toward hidden tabs, and reordering leaves the active
+  resource unchanged. `Alt+ArrowLeft`/`Alt+ArrowRight` provides keyboard
+  reordering. Selecting a launcher row replaces New or activates its singleton.
+  Collapse retains runtime tabs while hiding the panel. Width follows the shared
+  three-column budget without a fixed pixel cap and
   previews its current/minimum/maximum values through the panel separator. The
   inner divider exposes the panel width to assistive technology and supports
   the documented keyboard steps. Pointer-down preserves the starting width,
@@ -4881,8 +4885,9 @@ window; opening a normal panel afterward must still work.
 - **Status**: Unit-covered (`work-panel-resize.test.mjs`,
   `work-panel-window.test.mjs`, `work-panel-presentation.test.mjs`,
   `work-panel-tabs.test.mjs`, `browser-tab-restore.test.mjs`,
-  `work-panel.test.mjs`); isolated Electron context-menu user path and close
-  geometry in `scripts/e2e-work-panel-tab-close.mjs`; full UI scenario Draft
+  `work-panel.test.mjs`, `plugin-work-panel-views.test.mjs`); isolated Electron
+  tab-menu, Browser native-menu page visibility, and close geometry in
+  `scripts/e2e-work-panel-tab-close.mjs`; full UI scenario Draft
 
 #### E2E-057: Message-owned review history survives commits and rolls back safely
 
@@ -4922,6 +4927,31 @@ window; opening a normal panel afterward must still work.
 - **Acceptance**: D (workspace), Quality
 - **Milestone**: M5
 - **Status**: Unit-covered (`chat-review-entry.test.mjs`); full UI scenario Draft
+
+#### E2E-CHAT-turn-changed-files-summary: A finished turn lists the files it changed
+
+- **Preconditions**: A project-bound Agent session with a writable workspace.
+- **Steps**: 1) Ask the agent to create one file and edit another; watch the
+  turn while it streams. 2) After the reply finishes, inspect the area below
+  the answer. 3) Ask for a change touching more than twelve files across
+  several directories. 4) Click a row, then the `View all N files in Review`
+  link. 5) Roll back one file's change in Review and return to the turn.
+  6) Ask a question that writes no files. 7) Switch sessions and come back.
+- **Expected**: No summary appears while a turn streams or after a failed
+  turn. A finished turn that wrote workspace files shows one borderless
+  `Changes this turn` card below its answer and above plugin `entryExtra`
+  blocks, with the file count and summed `+`/`−`. Each path appears once with
+  its merged status letter and counts; up to four files use relaxed rows,
+  more use dense rows with a directory count, and rows past 12 fold into
+  `+N more`. A row click opens the session's Review tab scrolled to that file
+  with its changes expanded; the link opens Review without expanding. The
+  rolled-back file stays listed, struck through. Every earlier finished turn
+  keeps its own card, a turn without writes has none, and a session switch
+  fetches nothing extra. The per-call review rows are unchanged.
+- **Specs linked**: `04-ux/08-component-spec.md` §4.4, D674
+- **Acceptance**: D (workspace), Quality
+- **Milestone**: M5
+- **Status**: Unit-covered (`turn-changes-card.test.mjs`); full UI scenario Draft
 
 #### E2E-058: Built-in interactive terminal is absent
 
@@ -6780,6 +6810,23 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
 - **Specs linked**: `04-ux/07-ui-design-system.md` §8, `04-ux/02-i18n-english-first.md`, decisions-log D146 / D304 / D348
 - **Acceptance**: A (app startup), Quality
 - **Milestone**: M5
+
+#### E2E-SESSION-reopen-restores-running: Recreated windows retain live turn status
+
+- **Steps**: Start a Desktop turn in a session with an older completion
+  notification. Close and recreate its renderer while Main keeps the turn
+  alive. Inspect the sidebar and select the session before another agent event.
+  Repeat after the turn ends, and with a start/end event arriving during bootstrap.
+- **Expected**: Live tasks show running, and selecting one restores the running
+  composer state. Completed tasks stay idle. A delayed snapshot never overrides
+  a start/end event already received by the new renderer.
+- **Automation**: `node scripts/e2e-running-session-reopen.mjs` recreates real
+  Electron windows with the production bootstrap, Sidebar and selection flow,
+  using fixture backend responses. `session-list-runtime.test.mjs` checks the
+  Main snapshot; `session-running-bootstrap.test.mjs` covers event races and
+  responses from older hosts. The native macOS close gesture remains a manual check.
+- **Specs**: `03-runtime/01-ipc-protocol.md`, ADR 0090.
+
 #### E2E-099: Brand logo follows the active theme
 - **Status**: Draft
 - **Priority**: P3
@@ -8273,6 +8320,23 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
   `replace_messages_preserves_owning_turn_ids` covers the remaining rewrite
   callers. UI paging remains manual.
 
+- **Bounded-history regression (#1870)**: Regenerate an older prompt, then
+  continue until the root is outside the newest 100-message page. Complete
+  another turn while viewing that page, then repeat after switching to another
+  session. The archive must not append the older user root after the latest
+  answer in the active transcript, retained pane, or session cache. If the root
+  is loaded, its pager updates in place using its current message identity,
+  which can differ from the stable family key. A root removed during the
+  archive RPC stays absent. Previous variants remain available after restart.
+  With neither a cached nor retained background transcript, the acknowledgement
+  must leave the cache absent and allow the next prefetch to read the Host.
+  Automated event-to-projection coverage:
+  `apps/desktop/test/regenerate-root-projection.test.mjs`.
+  `node scripts/e2e-regenerate-root.mjs` exercises the real Host process,
+  production main persistence and renderer projections with an isolated
+  3,484-message transcript, three follow-up turns, restart, and a revision
+  round trip. Set `PI_DESKTOP_HOST_BIN` to a host built from the candidate.
+
 #### E2E-246: Retrying a large session truncates without a whole-transcript RPC
 
 
@@ -9012,6 +9076,10 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
     never overflows the menu.
   - The tooltip and accessible name retain the complete relative path so
     duplicate leaf names remain distinguishable.
+  - In a Git workspace containing accented, CJK, and emoji file names,
+    indexing and filtering retain each name exactly, including when Git's
+    stdout chunks split a UTF-8 character. Accepting the result names the
+    existing file, without replacement characters in its path.
   - Enter/Tab/click on a file replaces the `@` token with an inline chip that
     stays in the draft; that key does not send. File acceptance retains the
     original complete `entry.path` behind the chip; directory acceptance
@@ -9024,7 +9092,9 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
 - **Acceptance**: C (conversation & stream), Quality
 - **Milestone**: M5
 - **Status**: Unit-covered
-  (`apps/desktop/test/composer-file-reference-display.test.mjs`); file-mode row
+  (`apps/desktop/test/composer-file-reference-display.test.mjs` and
+  `packages/host-runtime/src/fs-index-encoding.test.ts`); Unicode filtering and
+  file acceptance run in `composer-deep-file-search-user-path.test.mjs`; file-mode row
   layout covered by `scripts/e2e-composer-autocomplete.mjs`; full UI journey
   Draft (run only in a capable environment when this surface changes)
 
@@ -18816,6 +18886,38 @@ host-created files. The full app's file-preview viewer is covered separately.
   `composer-suggestion-state.test.mjs`, `composer-suggestion-relay.test.mjs`,
   and `plugin-composer-suggestion.test.mjs`; the rendered journey remains a
   manual/Electron check when this surface changes.
+
+### E2E-REMOTE-FILE-MANAGER: Scoped remote plugin reads
+
+Run `node scripts/e2e-remote-file-manager.mjs` to validate the shipped copy in
+`apps/desktop/resources/plugins/pi.file-manager`. This is the release acceptance
+path: passing against a separate development plugin does not prove the bundled
+user path is repaired. The runner records the loaded directory in its output.
+An optional `<built-file-manager-directory>` argument selects the companion
+plugin's rebuilt `views/` or unpacked official PluginPack artifact for development
+validation only. Before accepting #1711, update the bundled release, its upstream
+tag/commit and per-file checksums, then rerun the default path on the updated PR
+integration candidate.
+
+A development integration may exercise a Desktop hotfix in that actual bundled
+directory, with its immutable source commit, local patch and artifact checksums
+recorded honestly in `UPSTREAM.md`. A passing hotfix journey does not claim that
+the companion upstream release or the maintainer's final acceptance is complete.
+`PI_FILE_MANAGER_QA_DIR` may point to an existing plugin `tests/electron`
+installation providing Playwright; `PI_ELECTRON_BINARY` selects an existing
+compatible Electron runtime. `PI_E2E_ARTIFACTS` optionally preserves screenshots.
+
+The isolated production plugin process and `file://` view use Desktop's actual
+SDK broker, durable-binding reader, loopback RACP transport and Host filesystem
+service. Only the fixture's project-record lookup and authentication bootstrap
+are supplied by the harness. The remote fixture root is registered explicitly
+outside the Host folder picker's browse root. Verify nested listings,
+text/image bytes, hidden credentials, read-only editor/save/menu controls,
+visible disconnect errors and refresh recovery, rejected late previews and
+ancestor opens after a project switch, and restored local
+editing/Browser/editor detection. No model, user profile or external SSH server
+participates. Real SSH transport and native Windows/Linux behavior require
+their separate platform acceptance.
 
 ### E2E-GENUI-inline-visualization-card: a visualization renders inline and stays sandboxed
 
