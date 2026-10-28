@@ -108,7 +108,7 @@ export function ModelConfigPage() {
   // re-arm a row whose own request is still in flight, and a busy row does
   // not lock the others (the same contract the capability pages pin).
   const rowBusy = useRowBusy();
-  const [testingId, setTestingId] = useState<string | null>(null);
+  const testingRows = useRowBusy();
   const [changingImageModel, setChangingImageModel] = useState(false);
   const [refreshingCatalog, setRefreshingCatalog] = useState(false);
   const [catalogStatus, setCatalogStatus] = useState<CatalogStatus | null>(null);
@@ -353,7 +353,7 @@ export function ModelConfigPage() {
 
   const testProvider = async (provider: ProviderPublic) => {
     if (!rowBusy.begin(provider.id)) return;
-    setTestingId(provider.id);
+    testingRows.begin(provider.id);
     try {
       const result = (await api.testProvider(provider.id)) as {
         ok?: boolean;
@@ -377,7 +377,7 @@ export function ModelConfigPage() {
       });
     } finally {
       rowBusy.end(provider.id);
-      setTestingId(null);
+      testingRows.end(provider.id);
     }
   };
 
@@ -478,7 +478,7 @@ export function ModelConfigPage() {
                 login !== null
               }
               isRowBusy={(id) => rowBusy.isBusy(id) || busyAccountId === id}
-              testingId={testingId}
+              isTesting={testingRows.isBusy}
               onEdit={(provider) =>
                 serviceRowKind(provider) === "account"
                   ? setEditingAccountId(provider.id)

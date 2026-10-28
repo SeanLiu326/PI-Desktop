@@ -5,6 +5,7 @@ import test from "node:test";
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 const [
   modelsSource,
+  serviceListSource,
   pluginsHookSource,
   installedSource,
   marketplaceSource,
@@ -12,6 +13,7 @@ const [
   dialogsSource,
 ] = await Promise.all([
   read("../src/components/settings/ModelConfigPage.tsx"),
+  read("../src/components/settings/ServiceList.tsx"),
   read("../src/features/plugins/usePluginsPage.ts"),
   read("../src/features/plugins/InstalledPluginsPanel.tsx"),
   read("../src/features/plugins/MarketplacePanel.tsx"),
@@ -36,6 +38,19 @@ test("model config rows keep independent busy guards", () => {
   assert.doesNotMatch(modelsSource, /busyId/);
   assert.doesNotMatch(modelsSource, /busy=\{\s*busyId/);
   assert.match(modelsSource, /isRowBusy=\{\(id\) => rowBusy\.isBusy\(id\) \|\| busyAccountId === id\}/);
+});
+
+test("provider test spinners remain independent while requests overlap", () => {
+  assert.match(modelsSource, /const testingRows = useRowBusy\(\)/);
+  const start = modelsSource.indexOf("const testProvider = async");
+  assert.ok(start >= 0, "testProvider missing");
+  const body = modelsSource.slice(start, start + 1800);
+  assert.match(body, /testingRows\.begin\(provider\.id\)/);
+  assert.match(body, /testingRows\.end\(provider\.id\)/);
+  assert.match(modelsSource, /isTesting=\{testingRows\.isBusy\}/);
+  assert.match(serviceListSource, /isTesting: \(providerId: string\) => boolean/);
+  assert.match(serviceListSource, /testing=\{isTesting\(provider\.id\)\}/);
+  assert.doesNotMatch(modelsSource, /testingId|setTestingId/);
 });
 
 test("plugins page rows keep independent busy guards", () => {
